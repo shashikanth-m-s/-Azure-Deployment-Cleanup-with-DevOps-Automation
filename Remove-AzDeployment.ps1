@@ -56,7 +56,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
           Write-Host "    Removed lock: $($_.Name)"
         }
       }
-       Start-Sleep -Seconds 3
+    
     } catch {
       Write-Error "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)"
       continue
