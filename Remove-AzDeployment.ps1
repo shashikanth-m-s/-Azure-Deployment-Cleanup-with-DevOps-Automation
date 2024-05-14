@@ -61,7 +61,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
       Write-Error "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)"
       continue
     }
-
+      Start-Sleep -Seconds 3
     # Get all deployments in resource group
     try {
       $deployments = Get-AzResourceGroupDeployment -ResourceGroupName $rgname
