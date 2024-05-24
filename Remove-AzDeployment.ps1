@@ -65,7 +65,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
         }
 
         # Wait for 3 seconds to ensure locks are fully removed
-        Start-Sleep -Seconds 3
+     #   Start-Sleep -Seconds 3
     }
 }
 
