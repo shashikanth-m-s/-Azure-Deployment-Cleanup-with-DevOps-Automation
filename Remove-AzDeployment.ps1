@@ -63,6 +63,9 @@ foreach ($subscriptionId in $SubscriptionIds) {
             Write-Error "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)"
             continue
         }
+
+        # Wait for 3 seconds
+        Start-Sleep -Seconds 3
     }
 }
 
@@ -86,7 +89,7 @@ foreach ($lockDetail in $allLockDetails) {
         # Delete deployments beyond the specified number to keep
         for ($i = $NumberOfDeploymentsToKeep; $i -lt $deployments.Count; $i++) {
             try {
-                Remove-AzResourceGroupDeployment -ResourceGroupName $rgname -Name $deployments[$i].DeploymentName  -ErrorAction Stop
+                Remove-AzResourceGroupDeployment -ResourceGroupName $rgname -Name $deployments[$i].DeploymentName -ErrorAction Stop
                 Write-Host "Deleted deployment: $($deployments[$i].DeploymentName)"
             } catch {
                 Write-Error "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)': $($_.Exception.Message)"
@@ -101,7 +104,7 @@ foreach ($lockDetail in $allLockDetails) {
         foreach ($lockName in $locksToEnable.Keys) {
             $lockLevel = $locksToEnable[$lockName]
             try {
-                New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -Force -ErrorAction Stop
+                New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -ErrorAction Stop
                 Write-Host "Re-enabled lock: $lockName"
             } catch {
                 Write-Error "Error re-enabling lock '$lockName' on resource group '$($rgname)': $($_.Exception.Message)"
