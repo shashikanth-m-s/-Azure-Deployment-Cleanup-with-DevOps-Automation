@@ -22,6 +22,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
         Write-Error "Error setting or getting subscription '$subscriptionId': $($_.Exception.Message)"
         continue
     }
+
     # Get all resource groups
     try {
         $rgs = Get-AzResourceGroup
