@@ -26,8 +26,6 @@ foreach ($subscriptionId in $SubscriptionIds) {
     # Get all resource groups
     try {
         $rgs = Get-AzResourceGroup
-        Write-Host "Resource Groups:"
-        $rgs | ForEach-Object { Write-Host $_.ResourceGroupName }  # List resource group names
     } catch {
         Write-Error "Error getting resource groups: $($_.Exception.Message)"
         continue  # Move to the next subscription if resource groups cannot be retrieved
@@ -49,6 +47,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
                 ResourceGroup = $rgname
                 Locks = $lockDetails
             }
+            Write-Host "Resource Group with Locks: $rgname"
         }
 
         # Remove lock on resource group if it exists
@@ -65,7 +64,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
         }
 
         # Wait for 3 seconds to ensure locks are fully removed
-       # Start-Sleep -Seconds 3
+        Start-Sleep -Seconds 3
     }
 }
 
@@ -73,8 +72,6 @@ foreach ($subscriptionId in $SubscriptionIds) {
 foreach ($subscriptionId in $SubscriptionIds) {
     try {
         Set-AzContext -SubscriptionId $subscriptionId -ErrorAction Stop
-        $subscription = Get-AzContext
-        Write-Host "Current Subscription: $($subscription.Subscription.Id)"
     } catch {
         Write-Error "Error setting or getting subscription '$subscriptionId': $($_.Exception.Message)"
         continue
@@ -112,8 +109,6 @@ foreach ($subscriptionId in $SubscriptionIds) {
                     Write-Error "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)': $($_.Exception.Message)"
                 }
             }
-        } else {
-            Write-Host "No deployments found in resource group '$rgname'."
         }
 
         # Re-enable locks if they existed before
