@@ -88,24 +88,11 @@ foreach ($lockDetail in $allLockDetails) {
 
         # Delete deployments beyond the specified number to keep
         for ($i = $NumberOfDeploymentsToKeep; $i -lt $deployments.Count; $i++) {
-            $retryCount = 0
-            $maxRetries = 3
-            $deleted = $false
-
-            while (-not $deleted -and $retryCount -lt $maxRetries) {
-                try {
-                    Remove-AzResourceGroupDeployment -ResourceGroupName $rgname -Name $deployments[$i].DeploymentName -ErrorAction Stop
-                    Write-Host "Deleted deployment: $($deployments[$i].DeploymentName)"
-                    $deleted = $true
-                } catch {
-                    $retryCount++
-                    Write-Error "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)'. Attempt $retryCount of $maxRetries: $($_.Exception.Message)"
-                   # Start-Sleep -Seconds 3  # Wait before retrying
-                }
-            }
-
-            if (-not $deleted) {
-                Write-Error "Failed to delete deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)' after $maxRetries attempts."
+            try {
+                Remove-AzResourceGroupDeployment -ResourceGroupName $rgname -Name $deployments[$i].DeploymentName -ErrorAction Stop
+                Write-Host "Deleted deployment: $($deployments[$i].DeploymentName)"
+            } catch {
+                Write-Error "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)': $($_.Exception.Message)"
             }
         }
     } else {
