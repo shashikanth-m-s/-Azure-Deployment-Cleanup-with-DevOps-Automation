@@ -64,7 +64,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
         }
 
         # Wait for 3 seconds to ensure locks are fully removed
-        Start-Sleep -Seconds 3
+       # Start-Sleep -Seconds 3
     }
 }
 
@@ -97,18 +97,24 @@ foreach ($subscriptionId in $SubscriptionIds) {
         }
 
         if ($deployments) {
-            # Sort the deployments by timestamp in descending order
-            $deployments = $deployments | Sort-Object -Property Timestamp -Descending
+            if ($deployments.Count -gt $NumberOfDeploymentsToKeep) {
+                # Sort the deployments by timestamp in descending order
+                $deployments = $deployments | Sort-Object -Property Timestamp -Descending
 
-            # Delete deployments beyond the specified number to keep
-            for ($i = $NumberOfDeploymentsToKeep; $i -lt $deployments.Count; $i++) {
-                try {
-                    Remove-AzResourceGroupDeployment -ResourceGroupName $rgname -Name $deployments[$i].DeploymentName -ErrorAction Stop
-                    Write-Host "Deleted deployment: $($deployments[$i].DeploymentName)"
-                } catch {
-                    Write-Error "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)': $($_.Exception.Message)"
+                # Delete deployments beyond the specified number to keep
+                for ($i = $NumberOfDeploymentsToKeep; $i -lt $deployments.Count; $i++) {
+                    try {
+                        Remove-AzResourceGroupDeployment -ResourceGroupName $rgname -Name $deployments[$i].DeploymentName -ErrorAction Stop
+                        Write-Host "Deleted deployment: $($deployments[$i].DeploymentName) in resource group: $rgname"
+                    } catch {
+                        Write-Error "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)': $($_.Exception.Message)"
+                    }
                 }
+            } else {
+                Write-Host "No deployments to delete in resource group: $rgname"
             }
+        } else {
+            Write-Host "No deployments found in resource group: $rgname"
         }
 
         # Re-enable locks if they existed before
@@ -118,7 +124,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
                 $lockLevel = $locksToEnable[$lockName]
                 try {
                     New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -Force -ErrorAction Stop
-                    Write-Host "Re-enabled lock: $lockName"
+                    Write-Host "Re-enabled lock: $lockName in resource group: $rgname"
                 } catch {
                     Write-Error "Error re-enabling lock '$lockName' on resource group '$($rgname)': $($_.Exception.Message)"
                 }
