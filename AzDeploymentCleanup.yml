@@ -20,7 +20,7 @@ jobs:
   - task: AzurePowerShell@5
     displayName: 'Azure PowerShell script: FilePath'
     inputs:
-      azureSubscription: 'demosc'
+      azureSubscription: 'projectSC'
       ScriptType: 'FilePath'
       ScriptPath: 'Remove-AzDeployment.ps1'
       ScriptArguments: -NumberOfDeploymentsToKeep 1 -SubscriptionIds "f7159c82-8d13-41e3-a967-953d43168392"
