@@ -16,7 +16,15 @@ jobs:
   - checkout: self
     fetchDepth: 1
   
- 
+  - task: AzurePowerShell@5
+    inputs:
+      azureSubscription: 'projectSC'
+      ScriptType: 'InlineScript'
+      Inline: |
+        # You can write your azure powershell scripts inline here. 
+        # You can also pass predefined and custom variables to this script using arguments
+        Update-Module Az.*
+      azurePowerShellVersion: 'LatestVersion'
   - task: AzurePowerShell@5
     displayName: 'Azure PowerShell script: FilePath'
     inputs:
@@ -25,6 +33,6 @@ jobs:
       ScriptPath: 'Remove-AzDeployment.ps1'
       ScriptArguments: -NumberOfDeploymentsToKeep 1 -SubscriptionIds "f7159c82-8d13-41e3-a967-953d43168392"
       azurePowerShellVersion: 'LatestVersion'
-     
+  
   
   
