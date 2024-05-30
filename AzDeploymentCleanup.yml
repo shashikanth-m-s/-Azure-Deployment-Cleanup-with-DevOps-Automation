@@ -1,7 +1,7 @@
 
 # Cron Schedules have been converted using UTC Time Zone and may need to be updated for your location
 schedules:
-- cron: "* 12 * * *" # 
+- cron: "30 8 * * *" # 
   branches:
     include:
    # - refs/heads/main
