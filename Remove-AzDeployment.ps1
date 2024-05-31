@@ -3,7 +3,7 @@ param(
     [int]$NumberOfDeploymentsToKeep,
     
     [Parameter(Mandatory=$true)]
-    [string[]]$SubscriptionIds  # Array of subscription IDs to target
+    [string[]]$SubscriptionIds  
 )
 
 # Set TLS 1.2 as the security protocol
