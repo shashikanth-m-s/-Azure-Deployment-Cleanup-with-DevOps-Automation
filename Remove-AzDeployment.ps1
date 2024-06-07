@@ -3,16 +3,36 @@ param(
     [int]$NumberOfDeploymentsToKeep,
     
     [Parameter(Mandatory=$true)]
-    [string[]]$SubscriptionIds  
+    [string[]]$SubscriptionIds  # Array of subscription IDs to target
 )
 
 # Set TLS 1.2 as the security protocol
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# Array to store lock details for all resource groups
+# File to store lock details
+$lockDetailsFile = "lockDetails.json"
+
+# Function to save lock details to file
+function Save-LockDetailsToFile {
+    param (
+        [Parameter(Mandatory=$true)]
+        [array]$lockDetails
+    )
+    $lockDetails | ConvertTo-Json | Set-Content -Path $lockDetailsFile
+}
+
+# Function to load lock details from file
+function Load-LockDetailsFromFile {
+    if (Test-Path $lockDetailsFile) {
+        return Get-Content -Path $lockDetailsFile | ConvertFrom-Json
+    } else {
+        return @()
+    }
+}
+
+# Load previously saved lock details
 $allLockDetails = @()
 
-# Phase 1: Remove locks from all resource groups and store lock details
 foreach ($subscriptionId in $SubscriptionIds) {
     try {
         Set-AzContext -SubscriptionId $subscriptionId -ErrorAction Stop
@@ -31,7 +51,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
         continue  # Move to the next subscription if resource groups cannot be retrieved
     }
 
-    # Iterate through resource groups to remove locks and store lock details
+    # Iterate through resource groups
     foreach ($rg in $rgs) {
         $rgname = $rg.ResourceGroupName
 
@@ -63,30 +83,11 @@ foreach ($subscriptionId in $SubscriptionIds) {
             continue
         }
 
+        # Save lock details to file
+        Save-LockDetailsToFile -lockDetails $allLockDetails
+
         # Wait for 3 seconds to ensure locks are fully removed
-       # Start-Sleep -Seconds 3
-    }
-}
-
-# Phase 2: Delete deployments and re-enable locks
-foreach ($subscriptionId in $SubscriptionIds) {
-    try {
-        Set-AzContext -SubscriptionId $subscriptionId -ErrorAction Stop
-    } catch {
-        Write-Error "Error setting or getting subscription '$subscriptionId': $($_.Exception.Message)"
-        continue
-    }
-
-    # Get all resource groups again for deployment deletion
-    try {
-        $rgs = Get-AzResourceGroup
-    } catch {
-        Write-Error "Error getting resource groups: $($_.Exception.Message)"
-        continue  # Move to the next subscription if resource groups cannot be retrieved
-    }
-
-    foreach ($rg in $rgs) {
-        $rgname = $rg.ResourceGroupName
+        Start-Sleep -Seconds 3
 
         # Get all deployments in resource group
         try {
