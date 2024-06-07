@@ -21,13 +21,12 @@ jobs:
       azureSubscription: 'azdemosc'
       ScriptType: 'FilePath'
       ScriptPath: 'Remove-AzDeployment.ps1'
-      ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionIds "77842199-04f9-46b9-9746-6e981a0db01d"'
+      ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionIds "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
       azurePowerShellVersion: 'LatestVersion'
     name: RunScript
-    continueOnError: true # Ensure this step continues even if it encounters an error
+    continueOnError: true
 
   - publish: $(Build.ArtifactStagingDirectory)
     artifact: lockDetails
-    condition: always() # Ensure this step runs even if the previous step fails
+    condition: always()
     displayName: 'Publish lockDetails.json'
-  
