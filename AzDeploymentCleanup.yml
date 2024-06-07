@@ -1,12 +1,11 @@
-
 # Cron Schedules have been converted using UTC Time Zone and may need to be updated for your location
 schedules:
-- cron: "30 8 * * *" # 
+- cron: "30 8 * * *"
   branches:
     include:
-   # - refs/heads/main
     - main
-  always: true  
+  always: true
+
 jobs:
 - job: Job_1
   displayName: Agent job 1
@@ -15,15 +14,19 @@ jobs:
   steps:
   - checkout: self
     fetchDepth: 1
-  
+
   - task: AzurePowerShell@5
     displayName: 'Azure PowerShell script: FilePath'
     inputs:
       azureSubscription: 'azdemosc'
       ScriptType: 'FilePath'
       ScriptPath: 'Remove-AzDeployment.ps1'
-      ScriptArguments: -NumberOfDeploymentsToKeep 0 -SubscriptionIds "77842199-04f9-46b9-9746-6e981a0db01d"
+      ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionIds "77842199-04f9-46b9-9746-6e981a0db01d"'
       azurePowerShellVersion: 'LatestVersion'
-  
-  
-  
+    name: RunScript
+    continueOnError: true # Ensure this step continues even if it encounters an error
+
+  - publish: $(Build.ArtifactStagingDirectory)
+    artifact: lockDetails
+    condition: always() # Ensure this step runs even if the previous step fails
+    displayName: 'Publish lockDetails.json'
