@@ -132,7 +132,7 @@ foreach ($subscriptionId in $SubscriptionIds) {
             foreach ($lockName in $locksToEnable.Keys) {
                 $lockLevel = $locksToEnable[$lockName]
                 try {
-                    New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -ErrorAction Stop
+                    New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -Force -ErrorAction Stop
                     Write-Host "Re-enabled lock: $lockName in resource group: $rgname"
                 } catch {
                     Write-Error "Error re-enabling lock '$lockName' on resource group '$($rgname)': $($_.Exception.Message)"
