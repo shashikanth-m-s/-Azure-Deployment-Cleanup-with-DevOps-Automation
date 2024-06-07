@@ -30,3 +30,13 @@ jobs:
     artifact: lockDetails
     condition: always() # Ensure this step runs even if the previous step fails
     displayName: 'Publish lockDetails.json'
+  - task: PublishPipelineArtifact@1
+    inputs:
+        targetPath: '$(Pipeline.Workspace)'
+        artifact: 'lockdetails'
+        publishLocation: 'pipeline'
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'drop'
+      publishLocation: 'Container'
