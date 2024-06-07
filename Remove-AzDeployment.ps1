@@ -9,8 +9,15 @@ param(
 # Set TLS 1.2 as the security protocol
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+# Specify the directory to store lock details
+$lockDetailsDirectory = "$(Build.ArtifactStagingDirectory)"
+# Ensure the directory exists
+if (-not (Test-Path $lockDetailsDirectory)) {
+    New-Item -ItemType Directory -Path $lockDetailsDirectory
+}
+
 # File to store lock details
-$lockDetailsFile = "lockDetails.json"
+$lockDetailsFile = Join-Path -Path $lockDetailsDirectory -ChildPath "lockDetails.json"
 
 # Function to save lock details to file
 function Save-LockDetailsToFile {
@@ -18,7 +25,7 @@ function Save-LockDetailsToFile {
         [Parameter(Mandatory=$true)]
         [array]$lockDetails
     )
-    $lockDetails | ConvertTo-Json | Set-Content -Path $lockDetailsFile
+    $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
 }
 
 # Function to load lock details from file
@@ -31,7 +38,7 @@ function Load-LockDetailsFromFile {
 }
 
 # Load previously saved lock details
-$allLockDetails = @()
+$allLockDetails = Load-LockDetailsFromFile
 
 foreach ($subscriptionId in $SubscriptionIds) {
     try {
@@ -132,6 +139,9 @@ foreach ($subscriptionId in $SubscriptionIds) {
             }
         }
     }
+
+    # Save lock details to file after processing each subscription
+    Save-LockDetailsToFile -lockDetails $allLockDetails
 }
 
-Write-Host "Script completed."
+Write-Host "Script completed. Lock details are saved in $lockDetailsFile."
