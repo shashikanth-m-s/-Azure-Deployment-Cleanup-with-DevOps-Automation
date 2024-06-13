@@ -3,7 +3,7 @@ param(
     [int]$NumberOfDeploymentsToKeep,
 
     [Parameter(Mandatory=$true)]
-    [string[]]$SubscriptionIds,  # Array of subscription IDs to target
+    [string[]]$SubscriptionIds,  
     
     [Parameter(Mandatory=$true)]
     [string]$OutputDirectory  # Directory to store lock details
