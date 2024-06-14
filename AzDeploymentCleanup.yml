@@ -23,7 +23,7 @@ jobs:
       ScriptPath: 'Remove-AzDeployment.ps1'
       ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionId "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
       azurePowerShellVersion: 'LatestVersion'
-     name: RunScript
+    name: RunScript
     continueOnError: true
 
   - task: PublishBuildArtifacts@1
