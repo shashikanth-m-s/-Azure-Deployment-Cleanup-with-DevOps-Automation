@@ -14,7 +14,7 @@ param(
 
 # Ensure the directory exists
 if (-not (Test-Path $OutputDirectory)) {
-    New-Item -ItemType Directory -Path $OutputDirectory
+    New-Item -ItemType Directory -Path $OutputDirectory -Force
 }
 
 # File to store lock details
@@ -28,6 +28,8 @@ function Save-LockDetailsToFile {
     )
     if ($lockDetails.Count -gt 0) {
         $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
+    } else {
+        Write-Host "No locks to save."
     }
 }
 
@@ -138,7 +140,7 @@ foreach ($rg in $rgs) {
         foreach ($lockName in $locksToEnable.Keys) {
             $lockLevel = $locksToEnable[$lockName]
             try {
-                New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -ErrorAction Stop
+                New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -Force -ErrorAction Stop
                 Write-Host "Re-enabled lock: $lockName in resource group: $rgname"
             } catch {
                 Write-Error "Error re-enabling lock '$lockName' on resource group '$($rgname)': $($_.Exception.Message)"
