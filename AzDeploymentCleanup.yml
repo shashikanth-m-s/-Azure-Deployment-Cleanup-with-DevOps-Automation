@@ -21,7 +21,7 @@ jobs:
       azureSubscription: 'azdemosc'
       ScriptType: 'FilePath'
       ScriptPath: 'Remove-AzDeployment.ps1'
-      ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionIds "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
+      ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionId "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
       azurePowerShellVersion: 'LatestVersion'
     name: RunScript
     continueOnError: true
