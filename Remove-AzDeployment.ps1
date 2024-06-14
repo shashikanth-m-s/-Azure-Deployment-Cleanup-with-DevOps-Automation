@@ -46,6 +46,11 @@ function Load-LockDetailsFromFile {
 # Load previously saved lock details
 $allLockDetails = Load-LockDetailsFromFile  # Initialize as loaded data or an empty array
 
+# Ensure $allLockDetails is initialized properly
+if ($null -eq $allLockDetails) {
+    $allLockDetails = @()
+}
+
 foreach ($subscriptionId in $SubscriptionIds) {
     try {
         Set-AzContext -SubscriptionId $subscriptionId -ErrorAction Stop
