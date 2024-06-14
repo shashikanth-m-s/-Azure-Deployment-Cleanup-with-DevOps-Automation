@@ -26,7 +26,12 @@ function Save-LockDetailsToFile {
         [Parameter(Mandatory=$true)]
         [array]$lockDetails
     )
-    $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
+    if ($lockDetails -and $lockDetails.Count -gt 0) {
+        $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
+        Write-Host "Lock details saved to $lockDetailsFile"
+    } else {
+        Write-Host "No lock details to save."
+    }
 }
 
 # Function to load lock details from file
@@ -34,12 +39,12 @@ function Load-LockDetailsFromFile {
     if (Test-Path $lockDetailsFile) {
         return Get-Content -Path $lockDetailsFile | ConvertFrom-Json
     } else {
-        return @()
+        return @()  # Return an empty array if the file doesn't exist
     }
 }
 
 # Load previously saved lock details
-$allLockDetails = @()  # Initialize as an empty array
+$allLockDetails = Load-LockDetailsFromFile  # Initialize as loaded data or an empty array
 
 foreach ($subscriptionId in $SubscriptionIds) {
     try {
