@@ -26,7 +26,7 @@ function Save-LockDetailsToFile {
         [Parameter(Mandatory=$true)]
         [array]$lockDetails
     )
-    if ($lockDetails -and $lockDetails.Count -gt 0) {
+    if ($lockDetails.Count -gt 0) {
         $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
         Write-Host "Lock details saved to $lockDetailsFile"
     } else {
@@ -86,8 +86,10 @@ foreach ($rg in $rgs) {
         continue
     }
 
-    # Save lock details to file after each resource group
-    Save-LockDetailsToFile -lockDetails $allLockDetails
+    # Save lock details to file after each resource group if there are any details
+    if ($allLockDetails.Count -gt 0) {
+        Save-LockDetailsToFile -lockDetails $allLockDetails
+    }
 
     # Wait for 3 seconds to ensure locks are fully removed
     Start-Sleep -Seconds 3
@@ -135,7 +137,9 @@ foreach ($rg in $rgs) {
     }
 }
 
-# Save final lock details to file
-Save-LockDetailsToFile -lockDetails $allLockDetails
+# Save final lock details to file if there are any details
+if ($allLockDetails.Count -gt 0) {
+    Save-LockDetailsToFile -lockDetails $allLockDetails
+}
 
 Write-Host "Script completed. Lock details are saved in $lockDetailsFile."
