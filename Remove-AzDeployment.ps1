@@ -26,7 +26,12 @@ function Save-LockDetailsToFile {
         [Parameter(Mandatory=$true)]
         [array]$lockDetails
     )
-    $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
+    if ($lockDetails -and $lockDetails.Count -gt 0) {
+        $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
+        Write-Host "Lock details saved to $lockDetailsFile"
+    } else {
+        Write-Host "No lock details to save."
+    }
 }
 
 # Initialize lock details
