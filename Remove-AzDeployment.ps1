@@ -6,11 +6,31 @@ param(
     [string]$SubscriptionId,  # Single subscription ID
     
     [Parameter(Mandatory=$true)]
-    [string]$OutputDirectory  # Directory to store any necessary output (if needed)
+    [string]$OutputDirectory  # Directory to store lock details
 )
 
 # Set TLS 1.2 as the security protocol
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# Ensure the directory exists
+if (-not (Test-Path $OutputDirectory)) {
+    New-Item -ItemType Directory -Path $OutputDirectory
+}
+
+# File to store lock details
+$lockDetailsFile = Join-Path -Path $OutputDirectory -ChildPath "lockDetails.json"
+
+# Function to save lock details to file
+function Save-LockDetailsToFile {
+    param (
+        [Parameter(Mandatory=$true)]
+        [array]$lockDetails
+    )
+    $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
+}
+
+# Initialize lock details
+$allLockDetails = @()
 
 try {
     Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
@@ -41,6 +61,10 @@ foreach ($rg in $rgs) {
         foreach ($lock in $existingLocks) {
             $lockDetails[$lock.Name] = $lock.Properties.Level  # Store lock name as key, level as value
         }
+        $allLockDetails += [PSCustomObject]@{
+            ResourceGroup = $rgname
+            Locks = $lockDetails
+        }
         Write-Host "Resource Group with Locks: $rgname"
     }
 
@@ -56,6 +80,9 @@ foreach ($rg in $rgs) {
         Write-Error "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)"
         continue
     }
+
+    # Save lock details to file after each resource group
+    Save-LockDetailsToFile -lockDetails $allLockDetails
 
     # Wait for 3 seconds to ensure locks are fully removed
     Start-Sleep -Seconds 3
@@ -103,4 +130,7 @@ foreach ($rg in $rgs) {
     }
 }
 
-Write-Host "Script completed."
+# Save final lock details to file
+Save-LockDetailsToFile -lockDetails $allLockDetails
+
+Write-Host "Script completed. Lock details are saved in $lockDetailsFile."
