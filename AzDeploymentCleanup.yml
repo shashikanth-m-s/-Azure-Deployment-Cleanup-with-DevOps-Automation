@@ -4,7 +4,7 @@ trigger:
       - main
 
 schedules:
-  - cron: "*/35 * * * *" # Run daily at 18:30 UTC
+  - cron: "30 18 * * *" # Run daily at 18:30 UTC
     displayName: Daily Pipeline Run
     branches:
       include:
@@ -30,3 +30,8 @@ jobs:
         ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionId "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
         azurePowerShellVersion: 'LatestVersion'
       continueOnError: true
+
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: lockDetails
+      condition: always()
+      displayName: 'Publish lockDetails.json'
