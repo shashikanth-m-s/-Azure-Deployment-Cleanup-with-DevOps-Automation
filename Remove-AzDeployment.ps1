@@ -135,6 +135,11 @@ foreach ($rg in $rgs) {
             }
         }
     }
+
+    # Save lock details to file after processing each resource group
+    if ($allLockDetails.Count -gt 0) {
+        Save-LockDetailsToFile -lockDetails $allLockDetails
+    }
 }
 
 # Save final lock details to file if there are any details
