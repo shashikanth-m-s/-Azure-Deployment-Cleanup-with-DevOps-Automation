@@ -3,7 +3,7 @@ param(
     [int]$NumberOfDeploymentsToKeep,
 
     [Parameter(Mandatory=$true)]
-    [string]$SubscriptionId  # Single subscription ID
+    [string]$SubscriptionI,  # Single subscription ID
     
     [Parameter(Mandatory=$true)]
     [string]$OutputDirectory  # Directory to store any necessary output (if needed)
