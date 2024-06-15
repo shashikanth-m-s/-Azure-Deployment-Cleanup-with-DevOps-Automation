@@ -29,8 +29,6 @@ function Save-LockDetailsToFile {
     if ($lockDetails.Count -gt 0) {
         $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
         Write-Host "Lock details saved to $lockDetailsFile"
-    } else {
-        Write-Host "No lock details to save."
     }
 }
 
@@ -71,24 +69,24 @@ foreach ($rg in $rgs) {
             Locks = $lockDetails
         }
         Write-Host "Resource Group with Locks: $rgname"
-    }
 
-    # Remove lock on resource group if it exists
-    try {
-        if ($existingLocks) {
-            $existingLocks | ForEach-Object {
-                Remove-AzResourceLock -LockId $_.LockId -Force -ErrorAction Stop
-                Write-Host "Removed lock: $($_.Name) in resource group: $rgname"
+        # Remove lock on resource group if it exists
+        try {
+            if ($existingLocks) {
+                $existingLocks | ForEach-Object {
+                    Remove-AzResourceLock -LockId $_.LockId -Force -ErrorAction Stop
+                    Write-Host "Removed lock: $($_.Name) in resource group: $rgname"
+                }
             }
+        } catch {
+            Write-Error "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)"
+            continue
         }
-    } catch {
-        Write-Error "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)"
-        continue
-    }
 
-    # Save lock details to file after each resource group if there are any details
-    if ($allLockDetails.Count -gt 0) {
+        # Save lock details to file after each resource group if there are any details
         Save-LockDetailsToFile -lockDetails $allLockDetails
+    } else {
+        Write-Host "No locks found in resource group: $rgname"
     }
 
     # Wait for 3 seconds to ensure locks are fully removed
@@ -136,7 +134,7 @@ foreach ($rg in $rgs) {
         }
     }
 
-    # Save lock details to file after processing each resource group
+    # Save lock details to file after processing each resource group if there are any details
     if ($allLockDetails.Count -gt 0) {
         Save-LockDetailsToFile -lockDetails $allLockDetails
     }
