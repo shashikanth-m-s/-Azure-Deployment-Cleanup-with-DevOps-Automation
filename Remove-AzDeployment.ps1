@@ -132,10 +132,7 @@ foreach ($rg in $rgs) {
                 Write-Error "Error re-enabling lock '$lockName' on resource group '$($rgname)': $($_.Exception.Message)"
             }
         }
-    }
-
-    # Save lock details to file after processing each resource group if there are any details
-    if ($allLockDetails.Count -gt 0) {
+        # Save lock details to file after processing each resource group if there are any details
         Save-LockDetailsToFile -lockDetails $allLockDetails
     }
 }
