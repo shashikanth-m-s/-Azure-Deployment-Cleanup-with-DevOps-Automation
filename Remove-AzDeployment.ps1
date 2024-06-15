@@ -1,23 +1,24 @@
 param(
     [Parameter(Mandatory=$true)]
     [int]$NumberOfDeploymentsToKeep,
+
+    [Parameter(Mandatory=$true)]
+    [string[]]$SubscriptionIds,  # Array of subscription IDs to target
     
     [Parameter(Mandatory=$true)]
-    [string[]]$SubscriptionIds  # Array of subscription IDs to target
+    [string]$OutputDirectory  # Directory to store lock details
 )
 
 # Set TLS 1.2 as the security protocol
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# Specify the directory to store lock details
-$lockDetailsDirectory = "$(Build.ArtifactStagingDirectory)"
 # Ensure the directory exists
-if (-not (Test-Path $lockDetailsDirectory)) {
-    New-Item -ItemType Directory -Path $lockDetailsDirectory
+if (-not (Test-Path $OutputDirectory)) {
+    New-Item -ItemType Directory -Path $OutputDirectory
 }
 
 # File to store lock details
-$lockDetailsFile = Join-Path -Path $lockDetailsDirectory -ChildPath "lockDetails.json"
+$lockDetailsFile = Join-Path -Path $OutputDirectory -ChildPath "lockDetails.json"
 
 # Function to save lock details to file
 function Save-LockDetailsToFile {
@@ -38,7 +39,7 @@ function Load-LockDetailsFromFile {
 }
 
 # Load previously saved lock details
-$allLockDetails = Load-LockDetailsFromFile
+$allLockDetails = @()  # Initialize as an empty array
 
 foreach ($subscriptionId in $SubscriptionIds) {
     try {
