@@ -1,32 +1,32 @@
-# Cron Schedules have been converted using UTC Time Zone and may need to be updated for your location
-schedules:
-- cron: "*/3 * * * *"
+trigger:
   branches:
     include:
-    - main
-  always: true
+      - main
+
+schedules:
+  - cron: "*/3 * * * *" # Run daily at 18:30 UTC
+    displayName: Daily Pipeline Run
+    branches:
+      include:
+        - main
+    always: true  
 
 jobs:
-- job: Job_1
-  displayName: Agent job 1
+- job: CleanupOldDeployments
+  displayName: Cleanup Old Deployments
   pool:
     vmImage: windows-latest
   steps:
-  - checkout: self
-    fetchDepth: 1
+    - checkout: self
+      displayName: Checkout Repository
+      fetchDepth: 1
 
-  - task: AzurePowerShell@5
-    displayName: 'Azure PowerShell script: FilePath'
-    inputs:
-      azureSubscription: 'azdemosc'
-      ScriptType: 'FilePath'
-      ScriptPath: 'Remove-AzDeployment.ps1'
-      ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionIds "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
-      azurePowerShellVersion: 'LatestVersion'
-    name: RunScript
-    continueOnError: true
-
-  - publish: $(Build.ArtifactStagingDirectory)
-    artifact: lockDetails
-    condition: always()
-    displayName: 'Publish lockDetails.json'
+    - task: AzurePowerShell@5
+      displayName: Run PowerShell Script
+      inputs:
+        azureSubscription: 'azdemosc'
+        ScriptType: 'FilePath'
+        ScriptPath: 'Remove-AzDeployment.ps1'
+        ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionId "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
+        azurePowerShellVersion: 'LatestVersion'
+      continueOnError: true
