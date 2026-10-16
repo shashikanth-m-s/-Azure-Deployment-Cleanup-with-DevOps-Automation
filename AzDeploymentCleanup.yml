@@ -1,37 +1,134 @@
-trigger:
-  branches:
-    include:
-      - main
+trigger: none
+  #branches:
+    #include:
+      #- main
 
-schedules:
-  - cron: "30 18 * * *" # Run daily at 18:30 UTC
-    displayName: Daily Pipeline Run
-    branches:
-      include:
-        - main
-    always: true  
+variables:
+  azureSubscription: 'smssc'
+  subscriptionId: ''
+- group: sms-library
 
-jobs:
-- job: CleanupOldDeployments
-  displayName: Cleanup Old Deployments
-  pool:
-    vmImage: windows-latest
-  steps:
-    - checkout: self
-      displayName: Checkout Repository
-      fetchDepth: 1
+stages:
+- stage: Dev
+  jobs:
+  - job: CleanupOldDeployments
+    displayName: Cleanup Old Deployments - Dev
+    pool:
+      #name: selfhostedSMS
+      vmImage: windows-latest
+    steps:
+      - checkout: self
+        displayName: Checkout Repository
+        fetchDepth: 1
 
-    - task: AzurePowerShell@5
-      displayName: Run PowerShell Script
-      inputs:
-        azureSubscription: 'azdemosc'
-        ScriptType: 'FilePath'
-        ScriptPath: 'Remove-AzDeployment.ps1'
-        ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionId "77842199-04f9-46b9-9746-6e981a0db01d" -OutputDirectory "$(Build.ArtifactStagingDirectory)"'
-        azurePowerShellVersion: 'LatestVersion'
-      continueOnError: true
+      - task: AzurePowerShell@5
+        displayName: Run PowerShell Script - Dev
+        inputs:
+          azureSubscription: $(azureSubscription)
+          ScriptType: 'FilePath'
+          ScriptPath: 'Remove-AzDeployment.ps1'
+          ScriptArguments: '-NumberOfDeploymentsToKeep 0 -SubscriptionId "$(subscriptionId)" -OutputDirectory "$(Build.ArtifactStagingDirectory)\Dev" -ResourceGroupNamePattern "^.*-dev-.*$"'
+          azurePowerShellVersion: 'LatestVersion'
+        continueOnError: true
 
-    - publish: $(Build.ArtifactStagingDirectory)
-      artifact: lockDetails
-      condition: always()
-      displayName: 'Publish lockDetails.json'
+      # - task: AzurePowerShell@5
+      #   displayName: Re-enable lock on rg-trx-intp-dev-core
+      #   inputs:
+      #     azureSubscription: $(azureSubscription)
+      #     ScriptType: 'InlineScript'
+      #     Inline: |
+      #       $resourceGroupName = 'rg-trx-intp-dev-e02-01-core'
+      #       $lockName = 'CanNotDelete'
+      #       $lockLevel = 'CanNotDelete'
+            
+      #       try {
+      #           New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $resourceGroupName -Force -ErrorAction Stop
+      #           Write-Host "Re-enabled lock: $lockName in resource group: $resourceGroupName"
+      #       } catch {
+      #           Write-Error "Error re-enabling lock '$lockName' on resource group '$resourceGroupName': $($_.Exception.Message)"
+      #       }
+      #     azurePowerShellVersion: 'LatestVersion'
+      #   continueOnError: true
+
+      - publish: $(Build.ArtifactStagingDirectory)\Dev
+        artifact: lockDetailsDev
+        condition: always()
+        displayName: 'Publish lockDetails.json - Dev'
+
+- stage: UAT
+  jobs:
+  - job: CleanupOldDeployments
+    displayName: Cleanup Old Deployments - UAT
+    pool:
+      vmImage: windows-latest
+    steps:
+      - checkout: self
+        displayName: Checkout Repository
+        fetchDepth: 1
+
+      - task: AzurePowerShell@5
+        displayName: Run PowerShell Script - UAT
+        inputs:
+          azureSubscription: $(azureSubscription)
+          ScriptType: 'FilePath'
+          ScriptPath: 'Remove-AzDeployment.ps1'
+          ScriptArguments: '-NumberOfDeploymentsToKeep 100 -SubscriptionId "$(subscriptionId)" -OutputDirectory "$(Build.ArtifactStagingDirectory)\UAT" -ResourceGroupNamePattern "^.*-uat-.*$"'
+          azurePowerShellVersion: 'LatestVersion'
+        continueOnError: true
+
+      - publish: $(Build.ArtifactStagingDirectory)\UAT
+        artifact: lockDetailsUAT
+        condition: always()
+        displayName: 'Publish lockDetails.json - UAT'
+
+- stage: SIT
+  jobs:
+  - job: CleanupOldDeployments
+    displayName: Cleanup Old Deployments - SIT
+    pool:
+      vmImage: windows-latest
+    steps:
+      - checkout: self
+        displayName: Checkout Repository
+        fetchDepth: 1
+
+      - task: AzurePowerShell@5
+        displayName: Run PowerShell Script - SIT
+        inputs:
+          azureSubscription: $(azureSubscription)
+          ScriptType: 'FilePath'
+          ScriptPath: 'Remove-AzDeployment.ps1'
+          ScriptArguments: '-NumberOfDeploymentsToKeep 100 -SubscriptionId "$(subscriptionId)" -OutputDirectory "$(Build.ArtifactStagingDirectory)\SIT" -ResourceGroupNamePattern "^.*-sit-.*$"'
+          azurePowerShellVersion: 'LatestVersion'
+        continueOnError: true
+
+      - publish: $(Build.ArtifactStagingDirectory)\SIT
+        artifact: lockDetailsSIT
+        condition: always()
+        displayName: 'Publish lockDetails.json - SIT'
+
+- stage: NonProd
+  jobs:
+  - job: CleanupOldDeployments
+    displayName: Cleanup Old Deployments - NonProd
+    pool:
+      vmImage: windows-latest
+    steps:
+      - checkout: self
+        displayName: Checkout Repository
+        fetchDepth: 1
+
+      - task: AzurePowerShell@5
+        displayName: Run PowerShell Script - NonProd
+        inputs:
+          azureSubscription: $(azureSubscription)
+          ScriptType: 'FilePath'
+          ScriptPath: 'Remove-AzDeployment.ps1'
+          ScriptArguments: '-NumberOfDeploymentsToKeep 100 -SubscriptionId "$(subscriptionId)" -OutputDirectory "$(Build.ArtifactStagingDirectory)\NonProd" -ResourceGroupNamePattern "^(?:(?!-dev-|-uat-|-sit-).)*$"'
+          azurePowerShellVersion: 'LatestVersion'
+        continueOnError: true
+
+      - publish: $(Build.ArtifactStagingDirectory)\NonProd
+        artifact: lockDetailsNonProd
+        condition: always()
+        displayName: 'Publish lockDetails.json - NonProd'
