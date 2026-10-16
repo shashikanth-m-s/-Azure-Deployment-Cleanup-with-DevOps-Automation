@@ -1,12 +1,16 @@
 param(
     [Parameter(Mandatory=$true)]
+    [ValidateRange(0, [int]::MaxValue)]
     [int]$NumberOfDeploymentsToKeep,
 
     [Parameter(Mandatory=$true)]
-    [string]$SubscriptionId,  # Single subscription ID
-    
+    [string]$SubscriptionId,
+
     [Parameter(Mandatory=$true)]
-    [string]$OutputDirectory  # Directory to store lock details
+    [string]$OutputDirectory,
+
+    [Parameter(Mandatory=$false)]
+    [string]$ResourceGroupNamePattern
 )
 
 # Set TLS 1.2 as the security protocol
@@ -26,29 +30,45 @@ function Save-LockDetailsToFile {
         [Parameter(Mandatory=$true)]
         [array]$lockDetails
     )
-    if ($lockDetails.Count -gt 0) {
+    if ($lockDetails -and $lockDetails.Count -gt 0) {
         $lockDetails | ConvertTo-Json -Depth 5 | Set-Content -Path $lockDetailsFile
-        Write-Host "Lock details saved to $lockDetailsFile"
     }
 }
 
-# Initialize lock details
+# Function to log messages
+function Log-Message {
+    param (
+        [string]$message,
+        [string]$type = "INFO"  # INFO, ERROR, WARNING
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logMessage = "$timestamp [$type] $message"
+    $logFile = Join-Path -Path $OutputDirectory -ChildPath "script.log"
+    $logMessage | Out-File -Append -FilePath $logFile
+    Write-Host $logMessage
+}
+
+# Initialize lock details array
 $allLockDetails = @()
 
 try {
     Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
     $subscription = Get-AzContext
-    Write-Host "Current Subscription: $($subscription.Subscription.Id)"
+    Log-Message -message "Current Subscription: $($subscription.Subscription.Id)" -type "INFO"
 } catch {
-    Write-Error "Error setting or getting subscription '$SubscriptionId': $($_.Exception.Message)"
+    Log-Message -message "Error setting or getting subscription '$SubscriptionId': $($_.Exception.Message)" -type "ERROR"
     exit 1
 }
 
 # Get all resource groups
 try {
-    $rgs = Get-AzResourceGroup
+    if ($ResourceGroupNamePattern) {
+        $rgs = Get-AzResourceGroup | Where-Object { $_.ResourceGroupName -match $ResourceGroupNamePattern }
+    } else {
+        $rgs = Get-AzResourceGroup
+    }
 } catch {
-    Write-Error "Error getting resource groups: $($_.Exception.Message)"
+    Log-Message -message "Error getting resource groups: $($_.Exception.Message)" -type "ERROR"
     exit 1
 }
 
@@ -62,41 +82,50 @@ foreach ($rg in $rgs) {
 
     if ($existingLocks) {
         foreach ($lock in $existingLocks) {
-            $lockDetails[$lock.Name] = $lock.Properties.Level  # Store lock name as key, level as value
+            $lockDetails[$lock.Name] = @{
+                Level        = $lock.Properties.Level
+                ResourceName = $lock.ResourceName
+                ResourceType = $lock.ResourceType
+            }
         }
+        Log-Message -message "Resource Group with Locks: $rgname" -type "INFO"
+    }
+
+    # Save lock details to array and immediately to file
+    if ($lockDetails.Count -gt 0) {
         $allLockDetails += [PSCustomObject]@{
             ResourceGroup = $rgname
             Locks = $lockDetails
         }
-        Write-Host "Resource Group with Locks: $rgname"
-
-        # Remove lock on resource group if it exists
-        try {
-            if ($existingLocks) {
-                $existingLocks | ForEach-Object {
-                    Remove-AzResourceLock -LockId $_.LockId -Force -ErrorAction Stop
-                    Write-Host "Removed lock: $($_.Name) in resource group: $rgname"
-                }
-            }
-        } catch {
-            Write-Error "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)"
-            continue
-        }
-
-        # Save lock details to file after each resource group if there are any details
         Save-LockDetailsToFile -lockDetails $allLockDetails
-    } else {
-        Write-Host "No locks found in resource group: $rgname"
     }
 
-    # Wait for 3 seconds to ensure locks are fully removed
-    Start-Sleep -Seconds 3
+    # Remove lock on resource group if it exists
+    try {
+        if ($existingLocks) {
+            $existingLocks | ForEach-Object {
+                # Only remove the lock if its scope is on the resource group
+                if ($_.ResourceType -eq "Microsoft.Authorization/locks") {
+                    Remove-AzResourceLock -LockId $_.LockId -Force -ErrorAction Stop
+                    Log-Message -message "Removed lock: $($_.Name) with scope on resource group: $rgname" -type "INFO"
+                } else {
+                    Log-Message -message "Skipped lock: $($_.Name) with scope on resource: $($_.ResourceName)" -type "INFO"
+                }
+            }
+        }
+    } catch {
+        Log-Message -message "Error removing lock from resource group '$($rgname)': $($_.Exception.Message)" -type "ERROR"
+        continue
+    }
+
+    # Wait for 2 seconds to ensure locks are fully removed
+    Start-Sleep -Seconds 2
 
     # Get all deployments in resource group
     try {
         $deployments = Get-AzResourceGroupDeployment -ResourceGroupName $rgname -ErrorAction SilentlyContinue
     } catch {
-        Write-Error "Error getting deployments for resource group '$($rgname)': $($_.Exception.Message)"
+        Log-Message -message "Error getting deployments for resource group '$($rgname)': $($_.Exception.Message)" -type "ERROR"
         continue
     }
 
@@ -109,37 +138,47 @@ foreach ($rg in $rgs) {
             for ($i = $NumberOfDeploymentsToKeep; $i -lt $deployments.Count; $i++) {
                 try {
                     Remove-AzResourceGroupDeployment -ResourceGroupName $rgname -Name $deployments[$i].DeploymentName -ErrorAction Stop
-                    Write-Host "Deleted deployment: $($deployments[$i].DeploymentName) in resource group: $rgname"
+                    Log-Message -message "Deleted deployment: $($deployments[$i].DeploymentName) in resource group: $rgname" -type "INFO"
                 } catch {
-                    Write-Error "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)': $($_.Exception.Message)"
+                    Log-Message -message "Error deleting deployment '$($deployments[$i].DeploymentName)' in resource group '$($rgname)': $($_.Exception.Message)" -type "ERROR"
                 }
             }
         } else {
-            Write-Host "No deployments to delete in resource group: $rgname"
+            Log-Message -message "No deployments to delete in resource group: $rgname" -type "INFO"
         }
     } else {
-        Write-Host "No deployments found in resource group: $rgname"
+        Log-Message -message "No deployments found in resource group: $rgname" -type "INFO"
     }
 
     # Re-enable locks if they existed before
-    if ($lockDetails.Count -gt 0) {
-        foreach ($lockName in $lockDetails.Keys) {
-            $lockLevel = $lockDetails[$lockName]
-            try {
-                New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -Force -ErrorAction Stop
-                Write-Host "Re-enabled lock: $lockName in resource group: $rgname"
-            } catch {
-                Write-Error "Error re-enabling lock '$lockName' on resource group '$($rgname)': $($_.Exception.Message)"
+    if ($existingLocks) {
+        foreach ($lock in $existingLocks) {
+            $lockName = $lock.Name
+            $lockLevel = $lock.Properties.Level
+            $ResourceType = $lock.ResourceType
+            # Check if the lock is at the resource group level by comparing Name and ResourceName
+            if ($ResourceType -eq "Microsoft.Authorization/locks") {
+                try {
+                    New-AzResourceLock -LockName $lockName -LockLevel $lockLevel -ResourceGroupName $rgname -Force -ErrorAction Stop
+                    Log-Message -message "Re-enabled lock: $lockName on resource group: $rgname" -type "INFO"
+                } catch {
+                    Log-Message -message "Error re-enabling lock '$lockName' on resource group '$($rgname)': $($_.Exception.Message)" -type "ERROR"
+                }
+            } else {
+                try {
+                    # Use the original method for resources that are not resource groups
+                    Log-Message -message "Skipping Re-enabling of lock: $lockName on resource: $($lock.ResourceName) as already lock present and scope type $($lock.ResourceType)" -type "INFO"
+                } catch {
+                    Log-Message -message "Error getting lock info for '$lockName' on resource '$($lock.ResourceName)' of type '$($lock.ResourceType)': $($_.Exception.Message)" -type "ERROR"
+                }
             }
         }
-        # Save lock details to file after processing each resource group if there are any details
-        Save-LockDetailsToFile -lockDetails $allLockDetails
     }
 }
 
-# Save final lock details to file if there are any details
+# Save all lock details to file at the end if there are any details to save
 if ($allLockDetails.Count -gt 0) {
     Save-LockDetailsToFile -lockDetails $allLockDetails
 }
 
-Write-Host "Script completed. Lock details are saved in $lockDetailsFile."
+Log-Message -message "Script completed. Lock details are saved in $lockDetailsFile." -type "INFO"
